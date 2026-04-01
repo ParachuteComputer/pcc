@@ -136,6 +136,14 @@ async function createTmuxSession(
     cmd,
   ]);
   if (!result.ok) return { ok: false, error: result.stderr };
+
+  // Auto-confirm the "Loading development channels" prompt.
+  // The prompt defaults to option 1 ("I am using this for local development"),
+  // so sending Enter after a brief delay confirms it.
+  setTimeout(async () => {
+    await sh(["tmux", "send-keys", "-t", `pcc-${session.name}`, "Enter"]);
+  }, 2000);
+
   return { ok: true };
 }
 
