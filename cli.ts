@@ -176,10 +176,18 @@ async function cmdInit() {
   }
 
   const serverPath = resolve(BRIDGE_DIR, "server.ts");
-  config["pcc-bridge"] = {
+
+  // MCP servers live inside the mcpServers nested object
+  if (!config.mcpServers) config.mcpServers = {};
+  config.mcpServers["pcc-bridge"] = {
     command: "bun",
     args: [serverPath],
   };
+
+  // Clean up stale top-level entry if we put one there before
+  if (config["pcc-bridge"] && !config["pcc-bridge"].mcpServers) {
+    delete config["pcc-bridge"];
+  }
 
   writeFileSync(claudeJsonPath, JSON.stringify(config, null, 2) + "\n");
 
