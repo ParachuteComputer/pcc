@@ -157,28 +157,37 @@ async function cmdInit() {
     log("Created ~/.pcc/sessions.json");
   }
 
-  // Add MCP server to ~/.claude/settings.json
-  const claudeSettingsPath = resolve(homedir(), ".claude", "settings.json");
-  let settings: any = {};
-  if (existsSync(claudeSettingsPath)) {
+  // Add MCP server to ~/.claude.json (where Claude Code reads MCP servers)
+  const claudeJsonPath = resolve(homedir(), ".claude.json");
+  let config: any = {};
+  if (existsSync(claudeJsonPath)) {
     try {
-      settings = JSON.parse(readFileSync(claudeSettingsPath, "utf-8"));
+      config = JSON.parse(readFileSync(claudeJsonPath, "utf-8"));
     } catch {}
   }
 
-  if (!settings.mcpServers) settings.mcpServers = {};
-
   const serverPath = resolve(BRIDGE_DIR, "server.ts");
-  settings.mcpServers["pcc-bridge"] = {
+  config["pcc-bridge"] = {
     command: "bun",
     args: [serverPath],
   };
 
-  const claudeDir = dirname(claudeSettingsPath);
-  if (!existsSync(claudeDir)) mkdirSync(claudeDir, { recursive: true });
-  writeFileSync(claudeSettingsPath, JSON.stringify(settings, null, 2) + "\n");
+  writeFileSync(claudeJsonPath, JSON.stringify(config, null, 2) + "\n");
 
-  log(`Added pcc-bridge MCP server to ${claudeSettingsPath}`);
+  // Clean up old entry from settings.json if we put one there before
+  const settingsPath = resolve(homedir(), ".claude", "settings.json");
+  if (existsSync(settingsPath)) {
+    try {
+      const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+      if (settings.mcpServers?.["pcc-bridge"]) {
+        delete settings.mcpServers["pcc-bridge"];
+        if (Object.keys(settings.mcpServers).length === 0) delete settings.mcpServers;
+        writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+      }
+    } catch {}
+  }
+
+  log(`Added pcc-bridge MCP server to ${claudeJsonPath}`);
   log(`Bridge server: ${serverPath}`);
   log("\nPCC initialized. Run 'pcc create <name> <path>' to create a session.");
 }
