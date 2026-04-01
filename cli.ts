@@ -223,6 +223,14 @@ async function cmdCreate(args: string[]) {
   log(`Created session "${name}" in ${path}`);
   log(`tmux: pcc-${name}`);
   log(`Command: ${cmd}`);
+
+  if (flags.attach || flags.a) {
+    log("Attaching to session... (Ctrl+b d to detach)");
+    const attach = Bun.spawn(["tmux", "attach-session", "-t", `pcc-${name}`], {
+      stdio: ["inherit", "inherit", "inherit"],
+    });
+    await attach.exited;
+  }
 }
 
 async function cmdAdopt(args: string[]) {
@@ -503,6 +511,8 @@ function parseFlags(args: string[]): any {
       result.ask = true;
     } else if (arg === "--no-remote-control") {
       result["no-remote-control"] = true;
+    } else if (arg === "--attach" || arg === "-a") {
+      result.attach = true;
     } else if (arg === "--continue") {
       result.continue = true;
     } else if (arg === "--channel" && i + 1 < args.length) {
@@ -581,6 +591,7 @@ Flags for create/adopt:
   --yolo                Use --dangerously-skip-permissions
   --ask                 Use interactive permissions (no auto-mode)
   --no-remote-control   Don't start in remote-control mode
+  --attach, -a          Attach to session after creation (for initial prompts)
   --channel <ch>        Add extra channel (repeatable)
   --session <id>        Resume specific session (adopt only)
   --continue            Resume most recent session (adopt only)`);
