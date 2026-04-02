@@ -411,6 +411,33 @@ async function cmdStop(args: string[]) {
   log(`Stopped session "${name}". Still in registry — 'pcc restore' will bring it back.`);
 }
 
+async function cmdStart(args: string[]) {
+  const name = args[0];
+  if (!name) error("usage: pcc start <name>");
+
+  const session = findSession(name);
+  if (!session) error(`session "${name}" not in registry. Use 'pcc create' instead.`);
+
+  if (await tmuxSessionExists(name)) {
+    error(`session "pcc-${name}" is already running`);
+  }
+
+  // Try resume, fall back to fresh
+  const resumeCmd = buildResumCmd(session);
+  const result = await createTmuxSession(session, resumeCmd);
+  if (result.ok) {
+    log(`Started "${name}" (resuming previous conversation)`);
+  } else {
+    const freshCmd = buildClaudeCmd(session);
+    const freshResult = await createTmuxSession(session, freshCmd);
+    if (freshResult.ok) {
+      log(`Started "${name}" (fresh session)`);
+    } else {
+      error(`failed to start: ${freshResult.error}`);
+    }
+  }
+}
+
 async function cmdRemove(args: string[]) {
   const name = args[0];
   if (!name) error("usage: pcc remove <name>");
@@ -593,6 +620,9 @@ switch (cmd) {
   case "ls":
     await cmdList();
     break;
+  case "start":
+    await cmdStart(args);
+    break;
   case "stop":
     await cmdStop(args);
     break;
@@ -624,6 +654,7 @@ Usage:
   pcc create <name> <path> [flags]      Create a new Claude session
   pcc adopt <name> <path> [flags]       Adopt an existing Claude session
   pcc list                              List all sessions
+  pcc start <name>                      Start a stopped session (resumes conversation)
   pcc stop <name>                       Stop a session (keeps in registry)
   pcc remove <name>                     Stop and remove from registry
   pcc restore                           Restore all sessions after reboot
